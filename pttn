@@ -1,0 +1,224 @@
+
+#----------------------------------------------------------------
+#
+# http://www.patton-smartnode-configuration.com
+# Asterweb Srl - Milan - Italy
+# info@asterweb.org
+#
+# Firmware 6.x
+# Generated configuration file 2018-10-04 17:56:32
+#
+#----------------------------------------------------------------
+
+cli version 3.20
+clock local default-offset +01:00
+dns-client server 192.168.1.1
+dns-client server 8.8.4.4
+dns-relay
+webserver port 80 language en
+sntp-client
+sntp-client server primary 192.168.1.170 port 123 version 4
+system hostname sn4112
+
+system
+  ic voice 0
+
+
+profile ppp default
+
+profile call-progress-tone IT_Dialtone
+  play 1 200 425 -12
+  pause 2 200
+  play 3 600 425 -12
+  pause 4 1000
+
+profile call-progress-tone IT_Alertingtone
+  play 1 1000 425 -12
+  pause 2 4000
+
+profile call-progress-tone IT_Busytone
+  play 1 500 425 -12
+  pause 2 500
+
+profile tone-set default
+
+profile tone-set IT
+dtmf-duration 100
+dtmf-interspace 100
+map call-progress-tone dial-tone IT_Dialtone
+map call-progress-tone ringback-tone IT_Alertingtone
+map call-progress-tone busy-tone IT_Busytone
+
+profile voip default
+  codec 1 g711alaw64k rx-length 20 tx-length 20
+  codec 2 g711ulaw64k rx-length 20 tx-length 20
+  codec 3 g729 rx-length 20 tx-length 20
+  fax transmission 1 relay t38-udp
+
+profile pstn default
+output-gain 10
+input-gain 5
+
+profile sip default
+  no autonomous-transitioning
+
+profile aaa default
+  method 1 local
+  method 2 none
+
+context ip router
+  interface LAN
+    ipaddress 192.168.1.199 255.255.255.0
+    tcp adjust-mss rx mtu
+    tcp adjust-mss tx mtu
+
+context ip router
+  route 0.0.0.0 0.0.0.0 192.168.1.1 0
+
+context cs switch
+  digit-collection timeout 3
+  no digit-collection terminating-char
+  national-prefix 0
+  international-prefix 00
+
+  routing-table called-e164 INBOUND_0
+    route default dest-interface IF_SIP_SERVICE_0 MAP_DID_0
+
+  routing-table called-e164 INBOUND_1
+    route default dest-interface IF_SIP_SERVICE_1 MAP_DID_1
+
+  routing-table called-e164 OUTBOUND_0
+    route default dest-service BOUND_PSTN_0
+
+  routing-table called-e164 OUTBOUND_1
+    route default dest-service BOUND_PSTN_1
+
+  mapping-table called-e164 to called-e164 MAP_DID_0
+    map default to linea1
+
+  mapping-table called-e164 to called-e164 MAP_DID_1
+    map default to linea2
+
+  interface fxo IF_PSTN_0
+    route call dest-table INBOUND_0
+    loop-break-duration min 60 max 5000
+    disconnect-signal loop-break
+    disconnect-signal busy-tone
+    ring-number on-caller-id
+    dial-after timeout 1
+    mute-dialing
+    use profile tone-set IT	
+
+  interface fxo IF_PSTN_1
+    route call dest-table INBOUND_1
+    loop-break-duration min 60 max 5000
+    disconnect-signal loop-break
+    disconnect-signal busy-tone
+    ring-number on-caller-id
+    dial-after timeout 1
+    mute-dialing
+    use profile tone-set IT	
+
+  interface sip IF_SIP_SERVICE_0
+    bind context sip-gateway GW_SIP_0
+    route call dest-table OUTBOUND_0
+    remote 192.168.1.170
+    early-disconnect
+    privacy
+
+  interface sip IF_SIP_SERVICE_1
+    bind context sip-gateway GW_SIP_1
+    route call dest-table OUTBOUND_1
+    remote 192.168.1.170
+    early-disconnect
+    privacy
+
+service hunt-group BOUND_PSTN_0
+    drop-cause normal-unspecified
+    drop-cause no-circuit-channel-available
+    drop-cause network-out-of-order
+    drop-cause temporary-failure
+    drop-cause switching-equipment-congestion
+    drop-cause access-info-discarded
+    drop-cause circuit-channel-not-available
+    drop-cause resources-unavailable
+    drop-cause user-busy
+    route call 1 dest-interface IF_PSTN_0
+
+service hunt-group BOUND_PSTN_1
+    drop-cause normal-unspecified
+    drop-cause no-circuit-channel-available
+    drop-cause network-out-of-order
+    drop-cause temporary-failure
+    drop-cause switching-equipment-congestion
+    drop-cause access-info-discarded
+    drop-cause circuit-channel-not-available
+    drop-cause resources-unavailable
+    drop-cause user-busy
+    route call 1 dest-interface IF_PSTN_1
+
+context cs switch
+  no shutdown
+
+authentication-service AUTH_SVC
+  username PattonUser1 password RVlrBrQZ4ZG7sAh
+  username PattonUser2 password uzwv0kz3meCuy7c
+
+location-service LOCATION_SVC_0
+  domain 1 192.168.1.170
+
+  identity PattonUser1
+    authentication outbound
+      authenticate 1 authentication-service AUTH_SVC username PattonUser1
+
+    registration outbound
+      registrar 192.168.1.170
+      lifetime 3600
+      register auto
+
+location-service LOCATION_SVC_1
+  domain 1 192.168.1.170
+
+  identity PattonUser2
+    authentication outbound
+      authenticate 1 authentication-service AUTH_SVC username PattonUser2
+
+    registration outbound
+      registrar 192.168.1.170
+      lifetime 3600
+      register auto
+
+
+context sip-gateway GW_SIP_0
+  interface IF_GW_SIP_0
+    bind interface LAN context router port 5060
+
+context sip-gateway GW_SIP_0
+  bind location-service LOCATION_SVC_0
+  no shutdown
+
+context sip-gateway GW_SIP_1
+  interface IF_GW_SIP_1
+    bind interface LAN context router port 5061
+
+context sip-gateway GW_SIP_1
+  bind location-service LOCATION_SVC_1
+  no shutdown
+
+port ethernet 0 0
+  medium auto
+  encapsulation ip
+  bind interface LAN router
+  no shutdown
+
+port fxo 0 0
+  encapsulation cc-fxo
+  bind interface IF_PSTN_0 switch
+  no shutdown
+
+port fxo 0 1
+  encapsulation cc-fxo
+  bind interface IF_PSTN_1 switch
+  no shutdown
+
+
